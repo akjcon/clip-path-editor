@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useEffect, useState, memo } from "react";
 import { Point, Tool, CanvasTransform } from "@/types";
+import { PointsOverlay } from "./PointsOverlay";
 
 interface CanvasProps {
   transform: CanvasTransform;
@@ -22,6 +23,46 @@ interface CanvasProps {
   clipPath: string;
 }
 
+// Memoized image component to prevent re-renders
+const ImageLayer = memo(function ImageLayer({
+  imageDataUrl,
+  imageWidth,
+  imageHeight,
+  clipPath,
+}: {
+  imageDataUrl: string;
+  imageWidth: number;
+  imageHeight: number;
+  clipPath: string;
+}) {
+  return (
+    <>
+      {/* Original image (faded) */}
+      <img
+        src={imageDataUrl}
+        alt="Original"
+        className="absolute inset-0 opacity-30"
+        style={{ width: imageWidth, height: imageHeight }}
+        draggable={false}
+      />
+      {/* Clipped image */}
+      <img
+        src={imageDataUrl}
+        alt="Clipped"
+        className="absolute inset-0"
+        style={{
+          width: imageWidth,
+          height: imageHeight,
+          clipPath: clipPath || "none",
+        }}
+        draggable={false}
+      />
+    </>
+  );
+});
+
+type DragMode = "none" | "pan" | "point" | "handle";
+
 export function Canvas({
   transform,
   onTransformChange,
@@ -41,9 +82,10 @@ export function Canvas({
   clipPath,
 }: CanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isPanning, setIsPanning] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragMode, setDragMode] = useState<DragMode>("none");
+  const [dragPointId, setDragPointId] = useState<string | null>(null);
+  const [dragHandleType, setDragHandleType] = useState<"in" | "out" | null>(null);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [spacePressed, setSpacePressed] = useState(false);
 
   // Convert screen coordinates to image percentage coordinates
@@ -91,46 +133,65 @@ export function Canvas({
     [transform, onTransformChange]
   );
 
-  // Handle mouse events
+  // Handle mouse down
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      // Middle click or space + click = pan (always works)
       if (e.button === 1 || spacePressed) {
-        // Middle click or space + click = pan
-        setIsPanning(true);
-        setDragStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
+        setDragMode("pan");
+        setPanStart({ x: e.clientX - transform.x, y: e.clientY - transform.y });
         return;
       }
 
       if (e.button !== 0) return;
 
       const target = e.target as HTMLElement;
-      const pointId = target.dataset.pointId;
-      const handleType = target.dataset.handleType as "in" | "out" | undefined;
+      const pointId = target.dataset?.pointId;
+      const handleType = target.dataset?.handleType as "in" | "out" | undefined;
 
-      if (tool === "select") {
-        if (pointId) {
-          onSelectPoint(pointId, handleType || null);
-          setIsDragging(true);
-          const pos = screenToImage(e.clientX, e.clientY);
-          if (pos) setDragStart({ x: pos.x, y: pos.y });
-        } else {
-          onSelectPoint(null);
+      // Clicked on a handle - start dragging handle (works in ANY mode)
+      if (pointId && handleType) {
+        onSelectPoint(pointId, handleType);
+        setDragMode("handle");
+        setDragPointId(pointId);
+        setDragHandleType(handleType);
+        return;
+      }
+
+      // Clicked on a point
+      if (pointId) {
+        // Delete mode: delete the point
+        if (tool === "delete") {
+          onDeletePoint(pointId);
+          return;
         }
-      } else if (tool === "add" && imageDataUrl) {
-        const pos = screenToImage(e.clientX, e.clientY);
-        if (pos && pos.x >= 0 && pos.x <= 100 && pos.y >= 0 && pos.y <= 100) {
-          onAddPoint(pos.x, pos.y);
-        }
-      } else if (tool === "delete" && pointId) {
-        onDeletePoint(pointId);
+
+        // Any other mode: select and start dragging
+        onSelectPoint(pointId, null);
+        setDragMode("point");
+        setDragPointId(pointId);
+        return;
+      }
+
+      // Clicked on empty space (not on a point or handle)
+      const pos = screenToImage(e.clientX, e.clientY);
+      const isInsideImage = pos && pos.x >= 0 && pos.x <= 100 && pos.y >= 0 && pos.y <= 100;
+
+      if (tool === "add" && isInsideImage && pos) {
+        // Add mode: create new point
+        onAddPoint(pos.x, pos.y);
+      } else {
+        // Select mode or outside image: deselect
+        onSelectPoint(null);
       }
     },
-    [tool, spacePressed, transform, screenToImage, onSelectPoint, onAddPoint, onDeletePoint, imageDataUrl]
+    [tool, spacePressed, transform, screenToImage, onSelectPoint, onAddPoint, onDeletePoint]
   );
 
+  // Handle mouse move
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      // Update cursor position
+      // Update cursor position for status bar
       const pos = screenToImage(e.clientX, e.clientY);
       if (pos && pos.x >= 0 && pos.x <= 100 && pos.y >= 0 && pos.y <= 100) {
         onCursorPositionChange(pos);
@@ -138,37 +199,39 @@ export function Canvas({
         onCursorPositionChange(null);
       }
 
-      if (isPanning) {
+      // Handle panning
+      if (dragMode === "pan") {
         onTransformChange({
           ...transform,
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y,
+          x: e.clientX - panStart.x,
+          y: e.clientY - panStart.y,
         });
         return;
       }
 
-      if (isDragging && selectedPointId && pos) {
-        const breakMirror = e.altKey;
-        if (selectedHandleType) {
-          // Moving a handle
-          const point = points.find((p) => p.id === selectedPointId);
-          if (point) {
-            const relX = pos.x - point.x;
-            const relY = pos.y - point.y;
-            onMoveHandle(selectedPointId, selectedHandleType, relX, relY, breakMirror);
-          }
-        } else {
-          // Moving a point
-          onMovePoint(selectedPointId, pos.x, pos.y);
+      // Handle dragging a point
+      if (dragMode === "point" && dragPointId && pos) {
+        onMovePoint(dragPointId, pos.x, pos.y);
+        return;
+      }
+
+      // Handle dragging a bezier handle
+      if (dragMode === "handle" && dragPointId && dragHandleType && pos) {
+        const point = points.find((p) => p.id === dragPointId);
+        if (point) {
+          const relX = pos.x - point.x;
+          const relY = pos.y - point.y;
+          const breakMirror = e.altKey;
+          onMoveHandle(dragPointId, dragHandleType, relX, relY, breakMirror);
         }
+        return;
       }
     },
     [
-      isPanning,
-      isDragging,
-      selectedPointId,
-      selectedHandleType,
-      dragStart,
+      dragMode,
+      dragPointId,
+      dragHandleType,
+      panStart,
       transform,
       screenToImage,
       points,
@@ -179,12 +242,14 @@ export function Canvas({
     ]
   );
 
+  // Handle mouse up
   const handleMouseUp = useCallback(() => {
-    setIsPanning(false);
-    setIsDragging(false);
+    setDragMode("none");
+    setDragPointId(null);
+    setDragHandleType(null);
   }, []);
 
-  // Handle keyboard events
+  // Space key for panning
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === "Space" && !e.repeat) {
@@ -217,9 +282,9 @@ export function Canvas({
   }, [handleWheel]);
 
   const getCursor = () => {
-    if (isPanning || spacePressed) return "grab";
+    if (dragMode === "pan" || spacePressed) return "grabbing";
     if (tool === "add") return "crosshair";
-    if (tool === "delete") return "not-allowed";
+    if (tool === "delete") return "pointer";
     return "default";
   };
 
@@ -235,14 +300,14 @@ export function Canvas({
     >
       {/* Grid background */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage: `
             linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
             linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)
           `,
           backgroundSize: `${20 * transform.scale}px ${20 * transform.scale}px`,
-          backgroundPosition: `${transform.x + 50}% ${transform.y + 50}%`,
+          backgroundPosition: `${transform.x}px ${transform.y}px`,
         }}
       />
 
@@ -256,136 +321,20 @@ export function Canvas({
       >
         {imageDataUrl && (
           <div className="relative" style={{ width: imageWidth, height: imageHeight }}>
-            {/* Original image (faded) */}
-            <img
-              src={imageDataUrl}
-              alt="Original"
-              className="absolute inset-0 opacity-30"
-              style={{ width: imageWidth, height: imageHeight }}
-              draggable={false}
+            <ImageLayer
+              imageDataUrl={imageDataUrl}
+              imageWidth={imageWidth}
+              imageHeight={imageHeight}
+              clipPath={clipPath}
             />
-
-            {/* Clipped image */}
-            <img
-              src={imageDataUrl}
-              alt="Clipped"
-              className="absolute inset-0"
-              style={{
-                width: imageWidth,
-                height: imageHeight,
-                clipPath: clipPath || "none",
-              }}
-              draggable={false}
+            <PointsOverlay
+              points={points}
+              selectedPointId={selectedPointId}
+              selectedHandleType={selectedHandleType}
+              imageWidth={imageWidth}
+              imageHeight={imageHeight}
+              scale={transform.scale}
             />
-
-            {/* SVG overlay for path and points */}
-            <svg
-              className="absolute inset-0"
-              width={imageWidth}
-              height={imageHeight}
-              style={{ overflow: "visible" }}
-            >
-              {/* Path outline */}
-              {points.length >= 2 && (
-                <path
-                  d={generatePathD(points, imageWidth, imageHeight)}
-                  fill="none"
-                  stroke="rgba(59, 130, 246, 0.8)"
-                  strokeWidth={2 / transform.scale}
-                />
-              )}
-
-              {/* Points and handles */}
-              {points.map((point, index) => {
-                const x = (point.x / 100) * imageWidth;
-                const y = (point.y / 100) * imageHeight;
-                const isSelected = selectedPointId === point.id;
-                const handleInX = x + (point.handleIn.x / 100) * imageWidth;
-                const handleInY = y + (point.handleIn.y / 100) * imageHeight;
-                const handleOutX = x + (point.handleOut.x / 100) * imageWidth;
-                const handleOutY = y + (point.handleOut.y / 100) * imageHeight;
-
-                return (
-                  <g key={point.id}>
-                    {/* Handle lines */}
-                    {isSelected && (
-                      <>
-                        <line
-                          x1={handleInX}
-                          y1={handleInY}
-                          x2={x}
-                          y2={y}
-                          stroke="rgba(147, 51, 234, 0.6)"
-                          strokeWidth={1 / transform.scale}
-                        />
-                        <line
-                          x1={x}
-                          y1={y}
-                          x2={handleOutX}
-                          y2={handleOutY}
-                          stroke="rgba(147, 51, 234, 0.6)"
-                          strokeWidth={1 / transform.scale}
-                        />
-                      </>
-                    )}
-
-                    {/* Handle In */}
-                    {isSelected && (
-                      <circle
-                        cx={handleInX}
-                        cy={handleInY}
-                        r={4 / transform.scale}
-                        fill={selectedHandleType === "in" ? "#a855f7" : "#fff"}
-                        stroke="#a855f7"
-                        strokeWidth={1.5 / transform.scale}
-                        data-point-id={point.id}
-                        data-handle-type="in"
-                        className="cursor-move"
-                      />
-                    )}
-
-                    {/* Handle Out */}
-                    {isSelected && (
-                      <circle
-                        cx={handleOutX}
-                        cy={handleOutY}
-                        r={4 / transform.scale}
-                        fill={selectedHandleType === "out" ? "#a855f7" : "#fff"}
-                        stroke="#a855f7"
-                        strokeWidth={1.5 / transform.scale}
-                        data-point-id={point.id}
-                        data-handle-type="out"
-                        className="cursor-move"
-                      />
-                    )}
-
-                    {/* Point */}
-                    <circle
-                      cx={x}
-                      cy={y}
-                      r={6 / transform.scale}
-                      fill={isSelected ? "#3b82f6" : "#fff"}
-                      stroke="#3b82f6"
-                      strokeWidth={2 / transform.scale}
-                      data-point-id={point.id}
-                      className="cursor-move"
-                    />
-
-                    {/* Point number */}
-                    <text
-                      x={x}
-                      y={y - 12 / transform.scale}
-                      textAnchor="middle"
-                      fill="#fff"
-                      fontSize={10 / transform.scale}
-                      className="pointer-events-none select-none"
-                    >
-                      {index + 1}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
           </div>
         )}
 
@@ -398,34 +347,4 @@ export function Canvas({
       </div>
     </div>
   );
-}
-
-// Generate SVG path d attribute from points
-function generatePathD(points: Point[], width: number, height: number): string {
-  if (points.length < 2) return "";
-
-  const toAbs = (p: Point) => ({
-    x: (p.x / 100) * width,
-    y: (p.y / 100) * height,
-    handleInX: ((p.x + p.handleIn.x) / 100) * width,
-    handleInY: ((p.y + p.handleIn.y) / 100) * height,
-    handleOutX: ((p.x + p.handleOut.x) / 100) * width,
-    handleOutY: ((p.y + p.handleOut.y) / 100) * height,
-  });
-
-  const first = toAbs(points[0]);
-  let d = `M ${first.x} ${first.y}`;
-
-  for (let i = 1; i < points.length; i++) {
-    const prev = toAbs(points[i - 1]);
-    const curr = toAbs(points[i]);
-    d += ` C ${prev.handleOutX} ${prev.handleOutY}, ${curr.handleInX} ${curr.handleInY}, ${curr.x} ${curr.y}`;
-  }
-
-  // Close the path
-  const last = toAbs(points[points.length - 1]);
-  d += ` C ${last.handleOutX} ${last.handleOutY}, ${first.handleInX} ${first.handleInY}, ${first.x} ${first.y}`;
-  d += " Z";
-
-  return d;
 }
