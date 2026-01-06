@@ -107,7 +107,9 @@ export function ImageUpload({ onImageLoad }: ImageUploadProps) {
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-zinc-300">
-                {isDragging ? "Drop image here" : "Drop an image or click to browse"}
+                {isDragging
+                  ? "Drop image here"
+                  : "Drop an image or click to browse"}
               </p>
               <p className="mt-1 text-xs text-zinc-500">
                 PNG, JPG, WebP, or GIF
@@ -118,7 +120,7 @@ export function ImageUpload({ onImageLoad }: ImageUploadProps) {
 
         {/* How it works */}
         <div className="w-full space-y-4">
-          <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider text-center">
+          <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider text-center pb-2">
             How it works
           </h3>
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -160,11 +162,36 @@ export function ImageUpload({ onImageLoad }: ImageUploadProps) {
 
         {/* Keyboard shortcuts */}
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-zinc-500">
-          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">V</kbd> Select</span>
-          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">P</kbd> Add point</span>
-          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">H</kbd> Pan</span>
-          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">R</kbd> Lock/Unlock</span>
-          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">⌘Z</kbd> Undo</span>
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono mr-0.5">
+              V
+            </kbd>{" "}
+            Select
+          </span>
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono mr-0.5">
+              P
+            </kbd>{" "}
+            Add point
+          </span>
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono mr-0.5">
+              H
+            </kbd>{" "}
+            Pan
+          </span>
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono mr-0.5">
+              R
+            </kbd>{" "}
+            Lock/Unlock
+          </span>
+          <span>
+            <kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono mr-0.5">
+              ⌘Z
+            </kbd>{" "}
+            Undo
+          </span>
         </div>
       </div>
     </div>

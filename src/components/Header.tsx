@@ -44,20 +44,19 @@ export function Header({
   };
 
   return (
-    <header className="flex h-12 items-center justify-between border-b border-border bg-card px-4">
+    <header className="flex h-12 items-center justify-between border-b border-border bg-card px-2">
       <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="gap-1">
+            <Button variant="ghost" size="sm" className="gap-2">
               <FolderOpen className="h-4 w-4" />
               <span className="font-medium">{projectName}</span>
-              {currentProjectId && <span className="text-muted-foreground">•</span>}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
             <DropdownMenuItem onClick={onNewProject}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className=" h-4 w-4" />
               New Project
             </DropdownMenuItem>
 
@@ -74,9 +73,20 @@ export function Header({
                     onClick={() => onLoadProject(project.id)}
                   >
                     <div className="flex flex-col">
-                      <span className={project.id === currentProjectId ? "font-medium" : ""}>
-                        {project.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={
+                            project.id === currentProjectId ? "font-medium" : ""
+                          }
+                        >
+                          {project.name}
+                        </span>
+                        {project.id === currentProjectId && (
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-green-500/80">
+                            Active
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xs text-muted-foreground">
                         {formatDate(project.updatedAt)}
                       </span>

@@ -7,6 +7,7 @@ import { Canvas } from "./Canvas/Canvas";
 import { StatusBar } from "./StatusBar";
 import { ImageUpload } from "./ImageUpload";
 import { ExportModal } from "./ExportModal";
+import { WelcomeOverlay } from "./WelcomeOverlay";
 import { useEditorContext } from "@/context/EditorContext";
 import { generateClipPathCssPixels } from "@/utils/pathGenerator";
 import { Tool } from "@/types";
@@ -132,11 +133,19 @@ export function Editor() {
   const handleImageLoad = (dataUrl: string, width: number, height: number) => {
     setImage(dataUrl, width, height);
     setProjectId(null); // New image means new unsaved project
+    setTool("add"); // Default to add tool when loading new image
     // Fit image to view after loading
     setTimeout(() => {
       fitToView(width, height, window.innerWidth, window.innerHeight - 72);
     }, 0);
   };
+
+  // Default to "add" tool when there are no points and an image is loaded
+  useEffect(() => {
+    if (state.imageDataUrl && state.points.length === 0 && state.tool !== "add") {
+      setTool("add");
+    }
+  }, [state.imageDataUrl, state.points.length, state.tool, setTool]);
 
   // Autosave whenever points or isClosed changes (and we have an image)
   useEffect(() => {
@@ -280,6 +289,8 @@ export function Editor() {
         imageWidth={state.imageWidth}
         imageHeight={state.imageHeight}
       />
+
+      <WelcomeOverlay />
     </div>
   );
 }

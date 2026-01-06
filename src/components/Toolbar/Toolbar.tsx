@@ -1,7 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Tool } from "@/types";
 import {
@@ -53,12 +57,12 @@ function ToolButton({
   onClick,
 }: ToolButtonProps) {
   return (
-    <Tooltip>
+    <Tooltip delayDuration={500}>
       <TooltipTrigger asChild>
         <Button
           variant={active ? "secondary" : "ghost"}
           size="icon"
-          className="h-9 w-9"
+          className="h-9 w-9 transition-all duration-0"
           disabled={disabled}
           onClick={onClick}
         >
@@ -94,7 +98,7 @@ export function Toolbar({
   hasSelection,
 }: ToolbarProps) {
   return (
-    <aside className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex w-12 flex-col items-center gap-1 rounded-xl border border-border bg-card/95 backdrop-blur-sm py-2 shadow-lg">
+    <aside className="absolute left-4 top-[calc(50%-20px)] -translate-y-1/2 z-10 flex w-12 flex-col items-center gap-1 rounded-xl border border-border bg-card/95 backdrop-blur-sm py-1.5 shadow-lg">
       <ToolButton
         icon={<MousePointer2 className="h-4 w-4" />}
         label="Select"
@@ -117,8 +121,7 @@ export function Toolbar({
         onClick={() => onToolChange("pan")}
       />
 
-      <Separator className="my-2 w-8" />
-
+      <Separator className="my-0.5 w-8" />
       <ToolButton
         icon={<Trash2 className="h-4 w-4" />}
         label="Delete Selected"
@@ -127,14 +130,20 @@ export function Toolbar({
         onClick={onDeleteSelected}
       />
       <ToolButton
-        icon={handlesMirrored ? <Link className="h-4 w-4" /> : <Unlink className="h-4 w-4" />}
+        icon={
+          handlesMirrored ? (
+            <Link className="h-4 w-4" />
+          ) : (
+            <Unlink className="h-4 w-4" />
+          )
+        }
         label={handlesMirrored ? "Unlock Handles" : "Lock Handles"}
         shortcut="R"
         disabled={!hasSelection}
         onClick={onToggleHandleMirror}
       />
 
-      <Separator className="my-2 w-8" />
+      <Separator className="my-0.5 w-8" />
 
       <ToolButton
         icon={<Undo2 className="h-4 w-4" />}
@@ -151,7 +160,7 @@ export function Toolbar({
         onClick={onRedo}
       />
 
-      <Separator className="my-2 w-8" />
+      <Separator className="my-0.5 w-8" />
 
       <ToolButton
         icon={<ZoomIn className="h-4 w-4" />}

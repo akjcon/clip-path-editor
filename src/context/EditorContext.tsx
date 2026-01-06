@@ -335,10 +335,51 @@ export function EditorProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isStorageLoaded) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-    } catch (error) {
-      console.error("Failed to save projects to localStorage:", error);
+    
+    const saveToStorage = (projectsToSave: Project[]): boolean => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(projectsToSave));
+        return true;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "QuotaExceededError") {
+          return false;
+        }
+        console.error("Failed to save projects to localStorage:", error);
+        return true; // Don't retry for non-quota errors
+      }
+    };
+
+    // Try to save current projects
+    if (saveToStorage(projects)) {
+      return;
+    }
+
+    // Quota exceeded - try removing oldest projects until it fits
+    // Sort by updatedAt ascending (oldest first), but keep current project
+    const sortedProjects = [...projects].sort((a, b) => a.updatedAt - b.updatedAt);
+    let projectsToSave = [...projects];
+    
+    for (const oldProject of sortedProjects) {
+      // Try removing oldest projects one by one
+      projectsToSave = projectsToSave.filter((p) => p.id !== oldProject.id);
+      
+      if (projectsToSave.length === 0) {
+        // Can't save anything, clear storage
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // Ignore
+        }
+        console.warn("localStorage quota exceeded - unable to save projects");
+        return;
+      }
+      
+      if (saveToStorage(projectsToSave)) {
+        // Update state to reflect removed projects
+        setProjects(projectsToSave);
+        console.warn(`Removed old project to free up storage space`);
+        return;
+      }
     }
   }, [projects, isStorageLoaded]);
 
