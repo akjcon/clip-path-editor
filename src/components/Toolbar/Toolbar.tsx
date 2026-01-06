@@ -7,12 +7,15 @@ import { Tool } from "@/types";
 import {
   MousePointer2,
   Plus,
+  Hand,
   Trash2,
   Undo2,
   Redo2,
   ZoomIn,
   ZoomOut,
   Maximize,
+  Link,
+  Unlink,
 } from "lucide-react";
 
 interface ToolbarProps {
@@ -26,6 +29,10 @@ interface ToolbarProps {
   onZoomOut: () => void;
   onZoomReset: () => void;
   onFitToView: () => void;
+  onDeleteSelected: () => void;
+  onToggleHandleMirror: () => void;
+  handlesMirrored: boolean | null; // null = mixed or no selection, true = all mirrored, false = all not mirrored
+  hasSelection: boolean;
 }
 
 interface ToolButtonProps {
@@ -81,9 +88,13 @@ export function Toolbar({
   onZoomOut,
   onZoomReset,
   onFitToView,
+  onDeleteSelected,
+  onToggleHandleMirror,
+  handlesMirrored,
+  hasSelection,
 }: ToolbarProps) {
   return (
-    <aside className="flex w-12 flex-col items-center gap-1 border-r border-border bg-card py-2">
+    <aside className="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex w-12 flex-col items-center gap-1 rounded-xl border border-border bg-card/95 backdrop-blur-sm py-2 shadow-lg">
       <ToolButton
         icon={<MousePointer2 className="h-4 w-4" />}
         label="Select"
@@ -99,11 +110,28 @@ export function Toolbar({
         onClick={() => onToolChange("add")}
       />
       <ToolButton
+        icon={<Hand className="h-4 w-4" />}
+        label="Pan"
+        shortcut="H"
+        active={tool === "pan"}
+        onClick={() => onToolChange("pan")}
+      />
+
+      <Separator className="my-2 w-8" />
+
+      <ToolButton
         icon={<Trash2 className="h-4 w-4" />}
-        label="Delete"
-        shortcut="D"
-        active={tool === "delete"}
-        onClick={() => onToolChange("delete")}
+        label="Delete Selected"
+        shortcut="Del"
+        disabled={!hasSelection}
+        onClick={onDeleteSelected}
+      />
+      <ToolButton
+        icon={handlesMirrored ? <Link className="h-4 w-4" /> : <Unlink className="h-4 w-4" />}
+        label={handlesMirrored ? "Unlock Handles" : "Lock Handles"}
+        shortcut="R"
+        disabled={!hasSelection}
+        onClick={onToggleHandleMirror}
       />
 
       <Separator className="my-2 w-8" />

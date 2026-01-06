@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Upload, ImageIcon } from "lucide-react";
+import { Upload, ImageIcon, MousePointer2, Plus, Hand } from "lucide-react";
 
 interface ImageUploadProps {
   onImageLoad: (dataUrl: string, width: number, height: number) => void;
@@ -79,40 +79,94 @@ export function ImageUpload({ onImageLoad }: ImageUploadProps) {
 
   return (
     <div className="flex flex-1 items-center justify-center bg-zinc-900 p-8">
-      <label
-        className={`flex h-80 w-full max-w-lg cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors ${
-          isDragging
-            ? "border-blue-500 bg-blue-500/10"
-            : "border-zinc-700 bg-zinc-800/50 hover:border-zinc-600 hover:bg-zinc-800"
-        }`}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-      >
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleFileInput}
-        />
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-zinc-700">
-            {isDragging ? (
-              <ImageIcon className="h-8 w-8 text-blue-400" />
-            ) : (
-              <Upload className="h-8 w-8 text-zinc-400" />
-            )}
+      <div className="flex flex-col items-center gap-8 max-w-2xl">
+        {/* Upload area */}
+        <label
+          className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-12 py-10 transition-colors ${
+            isDragging
+              ? "border-zinc-400 bg-zinc-800"
+              : "border-zinc-700 hover:border-zinc-500 hover:bg-zinc-800/50"
+          }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+        >
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileInput}
+          />
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700">
+              {isDragging ? (
+                <ImageIcon className="h-5 w-5 text-zinc-300" />
+              ) : (
+                <Upload className="h-5 w-5 text-zinc-400" />
+              )}
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-zinc-300">
+                {isDragging ? "Drop image here" : "Drop an image or click to browse"}
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                PNG, JPG, WebP, or GIF
+              </p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-lg font-medium text-zinc-300">
-              {isDragging ? "Drop image here" : "Upload an image"}
-            </p>
-            <p className="mt-1 text-sm text-zinc-500">
-              Drag and drop or click to browse
-            </p>
+        </label>
+
+        {/* How it works */}
+        <div className="w-full space-y-4">
+          <h3 className="text-xs font-medium text-zinc-500 uppercase tracking-wider text-center">
+            How it works
+          </h3>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="space-y-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800 border border-zinc-700 mx-auto">
+                <Plus className="h-4 w-4 text-zinc-400" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-zinc-300">Add points</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Click to place, click first point to close
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800 border border-zinc-700 mx-auto">
+                <MousePointer2 className="h-4 w-4 text-zinc-400" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-zinc-300">Edit curves</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Drag handles to adjust bezier curves
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800 border border-zinc-700 mx-auto">
+                <Hand className="h-4 w-4 text-zinc-400" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-zinc-300">Navigate</p>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  Scroll to zoom, drag to pan
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-      </label>
+
+        {/* Keyboard shortcuts */}
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-zinc-500">
+          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">V</kbd> Select</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">P</kbd> Add point</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">H</kbd> Pan</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">R</kbd> Lock/Unlock</span>
+          <span><kbd className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono">⌘Z</kbd> Undo</span>
+        </div>
+      </div>
     </div>
   );
 }

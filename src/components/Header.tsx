@@ -8,13 +8,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Download, FolderOpen, Save, Trash2, Plus } from "lucide-react";
+import { ChevronDown, Download, FolderOpen, Trash2, Plus } from "lucide-react";
 import { Project } from "@/types";
 
 interface HeaderProps {
   projectName: string;
   onProjectNameChange: (name: string) => void;
-  onSave: () => void;
   onExport: () => void;
   onNewProject: () => void;
   onLoadProject: (id: string) => void;
@@ -27,7 +26,6 @@ interface HeaderProps {
 export function Header({
   projectName,
   onProjectNameChange,
-  onSave,
   onExport,
   onNewProject,
   onLoadProject,
@@ -114,15 +112,6 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onSave}
-          disabled={!hasImage}
-        >
-          <Save className="mr-1 h-4 w-4" />
-          Save
-        </Button>
         <Button
           variant="default"
           size="sm"

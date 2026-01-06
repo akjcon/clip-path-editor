@@ -11,15 +11,16 @@ export function useEditor() {
   const [state, setState] = useState<EditorState>({
     tool: "select",
     points: [],
-    selectedPointId: null,
+    selectedPointIds: [],
     selectedHandleType: null,
     imageDataUrl: null,
     imageWidth: 0,
     imageHeight: 0,
+    isClosed: false,
   });
 
   const setTool = useCallback((tool: Tool) => {
-    setState((s) => ({ ...s, tool, selectedPointId: null, selectedHandleType: null }));
+    setState((s) => ({ ...s, tool, selectedPointIds: [], selectedHandleType: null }));
   }, []);
 
   const setImage = useCallback((dataUrl: string, width: number, height: number) => {
@@ -29,8 +30,9 @@ export function useEditor() {
       imageWidth: width,
       imageHeight: height,
       points: [],
-      selectedPointId: null,
+      selectedPointIds: [],
       selectedHandleType: null,
+      isClosed: false,
     }));
   }, []);
 
@@ -47,25 +49,127 @@ export function useEditor() {
     setState((s) => ({
       ...s,
       points: [...s.points, newPoint],
-      selectedPointId: newPoint.id,
+      selectedPointIds: [newPoint.id],
       selectedHandleType: null,
     }));
   }, []);
 
-  const selectPoint = useCallback((id: string | null, handleType: "in" | "out" | null = null) => {
-    setState((s) => ({
-      ...s,
-      selectedPointId: id,
-      selectedHandleType: handleType,
-    }));
+  // Insert a point at a specific index with given handles (for splitting curves)
+  const insertPoint = useCallback(
+    (
+      index: number,
+      x: number,
+      y: number,
+      handleIn: { x: number; y: number },
+      handleOut: { x: number; y: number },
+      prevPointHandleOut: { x: number; y: number },
+      nextPointHandleIn: { x: number; y: number }
+    ) => {
+      const newPoint: Point = {
+        id: generateId(),
+        x,
+        y,
+        handleIn,
+        handleOut,
+        isMirrored: false, // Handles from split are usually not mirrored
+      };
+
+      setState((s) => {
+        const newPoints = [...s.points];
+        const prevIndex = index;
+        const nextIndex = (index + 1) % s.points.length;
+
+        // Update previous point's handleOut
+        newPoints[prevIndex] = {
+          ...newPoints[prevIndex],
+          handleOut: prevPointHandleOut,
+          isMirrored: false,
+        };
+
+        // Update next point's handleIn
+        newPoints[nextIndex] = {
+          ...newPoints[nextIndex],
+          handleIn: nextPointHandleIn,
+          isMirrored: false,
+        };
+
+        // Insert new point after prevIndex
+        newPoints.splice(index + 1, 0, newPoint);
+
+        return {
+          ...s,
+          points: newPoints,
+          selectedPointIds: [newPoint.id],
+          selectedHandleType: null,
+        };
+      });
+    },
+    []
+  );
+
+  // Select a single point, optionally adding to selection with addToSelection flag
+  const selectPoint = useCallback(
+    (id: string | null, handleType: "in" | "out" | null = null, addToSelection: boolean = false) => {
+      setState((s) => {
+        if (id === null) {
+          return { ...s, selectedPointIds: [], selectedHandleType: null };
+        }
+
+        if (addToSelection) {
+          // Toggle selection
+          const newSelection = s.selectedPointIds.includes(id)
+            ? s.selectedPointIds.filter((pid) => pid !== id)
+            : [...s.selectedPointIds, id];
+          return { ...s, selectedPointIds: newSelection, selectedHandleType: handleType };
+        }
+
+        // Replace selection
+        return { ...s, selectedPointIds: [id], selectedHandleType: handleType };
+      });
+    },
+    []
+  );
+
+  // Set multiple selected point IDs at once (for marquee selection)
+  const setSelectedPointIds = useCallback((ids: string[]) => {
+    setState((s) => ({ ...s, selectedPointIds: ids, selectedHandleType: null }));
   }, []);
 
+  // Move a single point (used during drag)
   const movePoint = useCallback((id: string, x: number, y: number) => {
     setState((s) => ({
       ...s,
       points: s.points.map((p) =>
         p.id === id ? { ...p, x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) } : p
       ),
+    }));
+  }, []);
+
+  // Move all selected points by a delta
+  const moveSelectedPoints = useCallback((deltaX: number, deltaY: number) => {
+    setState((s) => ({
+      ...s,
+      points: s.points.map((p) =>
+        s.selectedPointIds.includes(p.id)
+          ? {
+              ...p,
+              x: Math.max(0, Math.min(100, p.x + deltaX)),
+              y: Math.max(0, Math.min(100, p.y + deltaY)),
+            }
+          : p
+      ),
+    }));
+  }, []);
+
+  // Move all points by a delta (for shape dragging)
+  const moveAllPoints = useCallback((deltaX: number, deltaY: number) => {
+    setState((s) => ({
+      ...s,
+      points: s.points.map((p) => ({
+        ...p,
+        x: Math.max(0, Math.min(100, p.x + deltaX)),
+        y: Math.max(0, Math.min(100, p.y + deltaY)),
+      })),
     }));
   }, []);
 
@@ -102,16 +206,58 @@ export function useEditor() {
   );
 
   const deletePoint = useCallback((id: string) => {
+    setState((s) => {
+      const newPoints = s.points.filter((p) => p.id !== id);
+      return {
+        ...s,
+        points: newPoints,
+        selectedPointIds: s.selectedPointIds.filter((pid) => pid !== id),
+        selectedHandleType: s.selectedPointIds.includes(id) ? null : s.selectedHandleType,
+        // Re-open the shape if we drop below 3 points
+        isClosed: newPoints.length < 3 ? false : s.isClosed,
+      };
+    });
+  }, []);
+
+  // Delete all selected points
+  const deleteSelectedPoints = useCallback(() => {
+    setState((s) => {
+      if (s.selectedPointIds.length === 0) return s;
+      const newPoints = s.points.filter((p) => !s.selectedPointIds.includes(p.id));
+      return {
+        ...s,
+        points: newPoints,
+        selectedPointIds: [],
+        selectedHandleType: null,
+        // Re-open the shape if we drop below 3 points
+        isClosed: newPoints.length < 3 ? false : s.isClosed,
+      };
+    });
+  }, []);
+
+  const closeShape = useCallback(() => {
     setState((s) => ({
       ...s,
-      points: s.points.filter((p) => p.id !== id),
-      selectedPointId: s.selectedPointId === id ? null : s.selectedPointId,
-      selectedHandleType: s.selectedPointId === id ? null : s.selectedHandleType,
+      isClosed: true,
+      tool: "select", // Switch to select mode after closing
+      selectedPointIds: [],
+      selectedHandleType: null,
+    }));
+  }, []);
+
+  const openShape = useCallback(() => {
+    setState((s) => ({
+      ...s,
+      isClosed: false,
     }));
   }, []);
 
   const setPoints = useCallback((points: Point[]) => {
     setState((s) => ({ ...s, points }));
+  }, []);
+
+  const setIsClosed = useCallback((isClosed: boolean) => {
+    setState((s) => ({ ...s, isClosed }));
   }, []);
 
   const clearImage = useCallback(() => {
@@ -121,8 +267,9 @@ export function useEditor() {
       imageWidth: 0,
       imageHeight: 0,
       points: [],
-      selectedPointId: null,
+      selectedPointIds: [],
       selectedHandleType: null,
+      isClosed: false,
     }));
   }, []);
 
@@ -131,11 +278,19 @@ export function useEditor() {
     setTool,
     setImage,
     addPoint,
+    insertPoint,
     selectPoint,
+    setSelectedPointIds,
     movePoint,
+    moveSelectedPoints,
+    moveAllPoints,
     moveHandle,
     deletePoint,
+    deleteSelectedPoints,
+    closeShape,
+    openShape,
     setPoints,
+    setIsClosed,
     clearImage,
   };
 }

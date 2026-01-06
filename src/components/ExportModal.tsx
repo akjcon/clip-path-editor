@@ -45,7 +45,7 @@ export function ExportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl overflow-hidden">
         <DialogHeader>
           <DialogTitle>Export Clip Path</DialogTitle>
         </DialogHeader>
@@ -71,7 +71,7 @@ export function ExportModal({
 
           {/* Code display */}
           <div className="relative">
-            <pre className="max-h-80 overflow-auto rounded-lg bg-zinc-900 p-4 text-sm text-zinc-300">
+            <pre className="max-h-80 overflow-auto rounded-lg bg-zinc-900 p-4 text-sm text-zinc-300 whitespace-pre-wrap break-all">
               <code>{code}</code>
             </pre>
             <Button

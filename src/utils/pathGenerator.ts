@@ -3,7 +3,7 @@ import { Point } from "@/types";
 /**
  * Generate SVG path `d` attribute from points using percentage coordinates
  */
-export function generateSvgPath(points: Point[]): string {
+export function generateSvgPath(points: Point[], isClosed: boolean = true): string {
   if (points.length < 2) return "";
 
   const first = points[0];
@@ -24,15 +24,17 @@ export function generateSvgPath(points: Point[]): string {
     d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${curr.x} ${curr.y}`;
   }
 
-  // Close the path back to the first point
-  const last = points[points.length - 1];
-  const cp1x = last.x + last.handleOut.x;
-  const cp1y = last.y + last.handleOut.y;
-  const cp2x = first.x + first.handleIn.x;
-  const cp2y = first.y + first.handleIn.y;
+  // Only close the path if isClosed is true
+  if (isClosed) {
+    const last = points[points.length - 1];
+    const cp1x = last.x + last.handleOut.x;
+    const cp1y = last.y + last.handleOut.y;
+    const cp2x = first.x + first.handleIn.x;
+    const cp2y = first.y + first.handleIn.y;
 
-  d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${first.x} ${first.y}`;
-  d += " Z";
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${first.x} ${first.y}`;
+    d += " Z";
+  }
 
   return d;
 }
@@ -43,22 +45,25 @@ export function generateSvgPath(points: Point[]): string {
  * This function returns the path in percentage format which needs to be
  * converted to pixels based on the element's actual size
  */
-export function generateClipPathCss(points: Point[]): string {
-  if (points.length < 2) return "none";
+export function generateClipPathCss(points: Point[], isClosed: boolean = true): string {
+  if (points.length < 2 || !isClosed) return "none";
 
-  const pathD = generateSvgPath(points);
+  const pathD = generateSvgPath(points, isClosed);
   return `path('${pathD}')`;
 }
 
 /**
  * Generate CSS clip-path with pixel values for a given image size
+ * Returns "none" if shape is not closed
  */
 export function generateClipPathCssPixels(
   points: Point[],
   width: number,
-  height: number
+  height: number,
+  isClosed: boolean = true
 ): string {
-  if (points.length < 2) return "none";
+  // Only apply clip-path when shape is closed
+  if (points.length < 3 || !isClosed) return "none";
 
   const toPixels = (p: Point) => ({
     x: (p.x / 100) * width,
@@ -101,7 +106,7 @@ export function generatePolygonClipPath(points: Point[]): string {
  * Generate exportable CSS code
  */
 export function generateExportCss(points: Point[], width: number, height: number): string {
-  const clipPath = generateClipPathCssPixels(points, width, height);
+  const clipPath = generateClipPathCssPixels(points, width, height, true);
 
   return `.clipped-element {
   /* For ${width}x${height}px elements */

@@ -7,10 +7,7 @@ import { Canvas } from "./Canvas/Canvas";
 import { StatusBar } from "./StatusBar";
 import { ImageUpload } from "./ImageUpload";
 import { ExportModal } from "./ExportModal";
-import { useEditor } from "@/hooks/useEditor";
-import { useCanvas } from "@/hooks/useCanvas";
-import { useHistory } from "@/hooks/useHistory";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useEditorContext } from "@/context/EditorContext";
 import { generateClipPathCssPixels } from "@/utils/pathGenerator";
 import { Tool } from "@/types";
 
@@ -22,20 +19,41 @@ export function Editor() {
 
   const {
     state,
+    transform,
+    isAnimatingTransform,
     setTool,
     setImage,
     addPoint,
+    insertPoint,
     selectPoint,
+    setSelectedPointIds,
     movePoint,
+    moveSelectedPoints,
+    moveAllPoints,
     moveHandle,
-    deletePoint,
+    deleteSelectedPoints,
+    toggleHandleMirror,
+    getSelectedPointsMirrored,
+    closeShape,
     setPoints,
+    setIsClosed,
     clearImage,
-  } = useEditor();
-
-  const { transform, setTransform, zoomIn, zoomOut, zoomReset, fitToView } = useCanvas();
-  const { undo, redo, canUndo, canRedo } = useHistory(state.points, setPoints);
-  const { projects, saveProject, loadProject, deleteProject } = useLocalStorage();
+    setTransform,
+    zoomIn,
+    zoomOut,
+    zoomReset,
+    fitToView,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    startDrag,
+    endDrag,
+    projects,
+    saveProject,
+    loadProject,
+    deleteProject,
+  } = useEditorContext();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -50,8 +68,13 @@ export function Editor() {
         setTool("select");
       } else if (e.key === "p" || e.key === "P") {
         setTool("add");
-      } else if (e.key === "d" || e.key === "D") {
-        setTool("delete");
+      } else if (e.key === "h" || e.key === "H") {
+        setTool("pan");
+      }
+
+      // Toggle handle mirror shortcut
+      else if ((e.key === "r" || e.key === "R") && state.selectedPointIds.length > 0) {
+        toggleHandleMirror();
       }
 
       // Zoom shortcuts
@@ -60,7 +83,7 @@ export function Editor() {
       } else if (e.key === "-") {
         zoomOut();
       } else if (e.key === "0") {
-        fitToView(state.imageWidth, state.imageHeight, window.innerWidth - 60, window.innerHeight - 72);
+        fitToView(state.imageWidth, state.imageHeight, window.innerWidth, window.innerHeight - 72);
       }
 
       // Undo/Redo
@@ -72,17 +95,14 @@ export function Editor() {
         undo();
       }
 
-      // Save shortcut
+      // Prevent browser save dialog
       else if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (state.imageDataUrl) {
-          handleSave();
-        }
       }
 
-      // Delete selected point
-      else if ((e.key === "Delete" || e.key === "Backspace") && state.selectedPointId) {
-        deletePoint(state.selectedPointId);
+      // Delete selected points
+      else if ((e.key === "Delete" || e.key === "Backspace") && state.selectedPointIds.length > 0) {
+        deleteSelectedPoints();
       }
 
       // Escape to deselect
@@ -100,9 +120,10 @@ export function Editor() {
     fitToView,
     undo,
     redo,
-    deletePoint,
+    deleteSelectedPoints,
+    toggleHandleMirror,
     selectPoint,
-    state.selectedPointId,
+    state.selectedPointIds,
     state.imageWidth,
     state.imageHeight,
     state.imageDataUrl,
@@ -113,23 +134,31 @@ export function Editor() {
     setProjectId(null); // New image means new unsaved project
     // Fit image to view after loading
     setTimeout(() => {
-      fitToView(width, height, window.innerWidth - 60, window.innerHeight - 72);
+      fitToView(width, height, window.innerWidth, window.innerHeight - 72);
     }, 0);
   };
 
-  const handleSave = () => {
-    if (!state.imageDataUrl) return;
+  // Autosave whenever points or isClosed changes (and we have an image)
+  useEffect(() => {
+    const imageDataUrl = state.imageDataUrl;
+    if (!imageDataUrl) return;
 
-    const newId = saveProject(
-      projectName,
-      state.imageDataUrl,
-      state.imageWidth,
-      state.imageHeight,
-      state.points,
-      projectId || undefined
-    );
-    setProjectId(newId);
-  };
+    // Debounce autosave slightly to avoid excessive saves during rapid changes
+    const timeoutId = setTimeout(() => {
+      const newId = saveProject(
+        projectName,
+        imageDataUrl,
+        state.imageWidth,
+        state.imageHeight,
+        state.points,
+        state.isClosed,
+        projectId || undefined
+      );
+      setProjectId(newId);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [state.points, state.isClosed, state.imageDataUrl, state.imageWidth, state.imageHeight, projectName, projectId, saveProject]);
 
   const handleLoadProject = (id: string) => {
     const project = loadProject(id);
@@ -138,8 +167,9 @@ export function Editor() {
       setProjectId(project.id);
       setImage(project.imageDataUrl, project.imageWidth, project.imageHeight);
       setPoints(project.points);
+      setIsClosed(project.isClosed ?? false);
       setTimeout(() => {
-        fitToView(project.imageWidth, project.imageHeight, window.innerWidth - 60, window.innerHeight - 72);
+        fitToView(project.imageWidth, project.imageHeight, window.innerWidth, window.innerHeight - 72);
       }, 0);
     }
   };
@@ -166,15 +196,14 @@ export function Editor() {
     setTool(tool);
   };
 
-  // Generate clip-path for preview
-  const clipPath = generateClipPathCssPixels(state.points, state.imageWidth, state.imageHeight);
+  // Generate clip-path for preview (only when shape is closed)
+  const clipPath = generateClipPathCssPixels(state.points, state.imageWidth, state.imageHeight, state.isClosed);
 
   return (
     <div className="flex h-screen flex-col bg-background">
       <Header
         projectName={projectName}
         onProjectNameChange={setProjectName}
-        onSave={handleSave}
         onExport={handleExport}
         onNewProject={handleNewProject}
         onLoadProject={handleLoadProject}
@@ -184,7 +213,7 @@ export function Editor() {
         currentProjectId={projectId}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 overflow-hidden">
         <Toolbar
           tool={state.tool}
           onToolChange={handleToolChange}
@@ -196,27 +225,39 @@ export function Editor() {
           onZoomOut={zoomOut}
           onZoomReset={zoomReset}
           onFitToView={() =>
-            fitToView(state.imageWidth, state.imageHeight, window.innerWidth - 60, window.innerHeight - 72)
+            fitToView(state.imageWidth, state.imageHeight, window.innerWidth, window.innerHeight - 72)
           }
+          onDeleteSelected={deleteSelectedPoints}
+          onToggleHandleMirror={toggleHandleMirror}
+          handlesMirrored={getSelectedPointsMirrored()}
+          hasSelection={state.selectedPointIds.length > 0}
         />
 
         {state.imageDataUrl ? (
           <Canvas
             transform={transform}
+            isAnimatingTransform={isAnimatingTransform}
             onTransformChange={setTransform}
             imageDataUrl={state.imageDataUrl}
             imageWidth={state.imageWidth}
             imageHeight={state.imageHeight}
             points={state.points}
-            selectedPointId={state.selectedPointId}
+            selectedPointIds={state.selectedPointIds}
             selectedHandleType={state.selectedHandleType}
             tool={state.tool}
+            isClosed={state.isClosed}
             onAddPoint={addPoint}
+            onInsertPoint={insertPoint}
             onSelectPoint={selectPoint}
+            onSetSelectedPointIds={setSelectedPointIds}
             onMovePoint={movePoint}
+            onMoveSelectedPoints={moveSelectedPoints}
+            onMoveAllPoints={moveAllPoints}
             onMoveHandle={moveHandle}
-            onDeletePoint={deletePoint}
+            onCloseShape={closeShape}
             onCursorPositionChange={setCursorPosition}
+            onStartDrag={startDrag}
+            onEndDrag={endDrag}
             clipPath={clipPath}
           />
         ) : (
@@ -229,6 +270,7 @@ export function Editor() {
         cursorPosition={cursorPosition}
         tool={state.tool}
         pointCount={state.points.length}
+        isClosed={state.isClosed}
       />
 
       <ExportModal

@@ -14,11 +14,12 @@ export interface Project {
   imageWidth: number;
   imageHeight: number;
   points: Point[];
+  isClosed: boolean;
   createdAt: number;
   updatedAt: number;
 }
 
-export type Tool = 'select' | 'add' | 'delete';
+export type Tool = 'select' | 'add' | 'pan';
 
 export interface CanvasTransform {
   x: number; // Pan X
@@ -29,11 +30,12 @@ export interface CanvasTransform {
 export interface EditorState {
   tool: Tool;
   points: Point[];
-  selectedPointId: string | null;
+  selectedPointIds: string[]; // Changed from selectedPointId to support multi-select
   selectedHandleType: 'in' | 'out' | null;
   imageDataUrl: string | null;
   imageWidth: number;
   imageHeight: number;
+  isClosed: boolean; // Whether the shape path is closed
 }
 
 export interface HistoryState {
