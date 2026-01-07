@@ -1,0 +1,42 @@
+# clippath.app
+
+> CSS Clip Path Generator - Create complex clip-path shapes with bezier curves visually
+
+## What This Tool Does
+
+clippath.app is a free, browser-based visual editor for creating CSS `clip-path` properties. Users can:
+
+- Upload any image as a reference
+- Click to place points and create polygon or curved shapes
+- Drag bezier curve handles to create smooth, complex paths
+- Export the resulting CSS `clip-path` value in multiple formats (percentage, pixels, polygon, path)
+- Preview the clipped result in real-time
+
+## Use Cases
+
+- Creating custom image masks and shapes for web design
+- Generating clip-path CSS for hero images, avatars, or decorative elements
+- Designing non-rectangular UI components
+- Creating SVG-like curved shapes using pure CSS
+
+## Technical Details
+
+- Output formats: `clip-path: polygon(...)` or `clip-path: path(...)`
+- Supports both percentage-based (responsive) and pixel-based values
+- Works entirely in the browser - no server upload required
+- Built with Next.js and React
+
+## Example Output
+
+```css
+clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+```
+
+```css
+clip-path: path('M 100 0 C 150 0 200 50 200 100 C 200 150 150 200 100 200 C 50 200 0 150 0 100 C 0 50 50 0 100 0 Z');
+```
+
+## Links
+
+- Website: https://clippath.app
+- No API available - this is an interactive browser tool

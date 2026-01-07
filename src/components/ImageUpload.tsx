@@ -80,6 +80,17 @@ export function ImageUpload({ onImageLoad }: ImageUploadProps) {
   return (
     <div className="flex flex-1 items-center justify-center bg-zinc-900 p-8">
       <div className="flex flex-col items-center gap-8 max-w-2xl">
+        {/* SEO headline */}
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-semibold text-zinc-100">
+            CSS Clip Path Generator
+          </h1>
+          <p className="text-sm text-zinc-400 max-w-md">
+            Create complex clip-path shapes with bezier curves. Upload an image,
+            draw your path, and export ready-to-use CSS.
+          </p>
+        </div>
+
         {/* Upload area */}
         <label
           className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed px-12 py-10 transition-colors ${
