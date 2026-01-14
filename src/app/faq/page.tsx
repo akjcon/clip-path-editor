@@ -139,59 +139,59 @@ export default function FAQPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="min-h-screen bg-background text-foreground">
+      <main className="min-h-screen bg-zinc-900 text-zinc-100">
         <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
+            className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors mb-8"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Editor
           </Link>
 
           <header className="mb-12">
-            <h1 className="text-4xl font-bold tracking-tight mb-4">
+            <h1 className="text-3xl font-semibold tracking-tight mb-4 text-zinc-100">
               Frequently Asked Questions
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-sm text-zinc-400 max-w-2xl">
               Everything you need to know about CSS clip-path, bezier curves,
               and our free online clip path generator tool for modern web
               design.
             </p>
           </header>
 
-          <section className="space-y-6">
+          <section className="space-y-4">
             {faqs.map((faq, index) => (
               <article
                 key={index}
-                className="border border-border rounded-lg p-6 bg-card hover:border-primary/50 transition-colors"
+                className="border border-zinc-700 rounded-lg p-5 bg-zinc-800/50 hover:border-zinc-500 transition-colors"
               >
-                <h2 className="text-xl font-semibold mb-3">{faq.question}</h2>
-                <p className="text-muted-foreground leading-relaxed">
+                <h2 className="text-base font-medium mb-2 text-zinc-200">{faq.question}</h2>
+                <p className="text-sm text-zinc-400 leading-relaxed">
                   {faq.answer}
                 </p>
               </article>
             ))}
           </section>
 
-          <section className="mt-16 border-t border-border pt-12">
-            <h2 className="text-2xl font-bold mb-4">
+          <section className="mt-12 border-t border-zinc-700 pt-10">
+            <h2 className="text-xl font-semibold mb-3 text-zinc-100">
               Ready to Create Your Own Clip Path?
             </h2>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-sm text-zinc-400 mb-6">
               Start using our free CSS clip-path generator to create stunning
               bezier curves, polygons, and custom shapes for your web projects.
               No registration required.
             </p>
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-6 py-3 text-sm font-medium hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center justify-center rounded-md border border-zinc-700 bg-zinc-800/50 px-6 py-2 text-sm text-zinc-300 transition-all hover:border-zinc-500 hover:bg-zinc-700/50 hover:text-white"
             >
               Open Clip Path Generator
             </Link>
           </section>
 
-          <footer className="mt-16 pt-8 border-t border-border text-center text-sm text-muted-foreground">
+          <footer className="mt-12 pt-6 border-t border-zinc-800 text-center text-xs text-zinc-500">
             <p>
               CSS Clip Path Generator - Free online tool for creating custom
               clip paths, bezier curves, and polygon shapes for web design and

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { Upload, ImageIcon, MousePointer2, Plus, Hand } from "lucide-react";
 
 interface ImageUploadProps {
@@ -204,6 +205,14 @@ export function ImageUpload({ onImageLoad }: ImageUploadProps) {
             Undo
           </span>
         </div>
+
+        {/* FAQ link */}
+        <Link
+          href="/faq"
+          className="text-xs text-zinc-500 hover:text-zinc-300 underline underline-offset-2 transition-colors"
+        >
+          Questions?
+        </Link>
       </div>
     </div>
   );
